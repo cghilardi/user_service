@@ -7,7 +7,7 @@ import com.twitter.io.Buf
 import com.twitter.io.Bufs
 import play.api.libs.json.Json
 
-case class UsersToLoad(ids: Seq[String])
+case class UsersToLoad(ids: Seq[Int])
 case class User(name: String, age: String)
 
 object UserService {
@@ -26,8 +26,8 @@ object UserService {
       val usersToLoad = Json.fromJson[UsersToLoad](json).get
 
       // redis calls
-      val f = redisClient.mGet(usersToLoad.ids.map(id => Buf.Utf8("name:").concat(Buf.Utf8(id))))
-      val f2 = redisClient.mGet(usersToLoad.ids.map(id => Buf.Utf8("age:").concat(Buf.Utf8(id))))
+      val f = redisClient.mGet(usersToLoad.ids.map(id => Buf.Utf8("name:").concat(Buf.Utf8(id.toString))))
+      val f2 = redisClient.mGet(usersToLoad.ids.map(id => Buf.Utf8("age:").concat(Buf.Utf8(id.toString))))
 
       // await redis calls then build response
       Future.collect(Seq(f, f2)) flatMap buildResponse
@@ -39,7 +39,6 @@ object UserService {
     val users:Seq[User] = (l.head, l.tail.head).zipped.map((name, age) => {
       new User(Bufs.asUtf8String(name.getOrElse(Buf.Utf8(""))), Bufs.asUtf8String(age.getOrElse(Buf.Utf8(""))))
     })
-
     // serialize users in json
     implicit val modelFormat = Json.format[User]
     val res = http.Response(http.Versions.HTTP_1_1, http.Status.Ok)
